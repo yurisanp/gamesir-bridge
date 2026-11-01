@@ -1,0 +1,7 @@
+# Esconde o dongle GameSir (3537:1007, modo DInput) de jogos, Steam e do desktop.
+# Quem lê o dongle é o gamesir-bridge (root), que expõe um controle Xbox 360 virtual.
+# Sem isto, a Steam veria DOIS controles: o virtual e o dongle cru.
+#
+# Precisa rodar DEPOIS do 60-input-id.rules (que define ID_INPUT_JOYSTICK) e ANTES
+# do 70-uaccess.rules (que dá acesso ao usuário com base nessa variável) -- daí o 65.
+SUBSYSTEM=="input", ATTRS{idVendor}=="3537", ATTRS{idProduct}=="1007", ENV{ID_INPUT_JOYSTICK}="", ENV{LIBINPUT_IGNORE_DEVICE}="1"

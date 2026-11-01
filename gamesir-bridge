@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+"""gamesir-bridge -- GameSir T4 Cyclone Pro dongle (3537:1007, modo DInput) -> controle Xbox 360 virtual.
+
+O dongle, no Linux, cai no modo DInput genérico: os botões saem num gamepad HID
+cru (sem mapeamento conhecido) e o Home sai como KEY_HOMEPAGE numa interface
+"Consumer Control" separada. Este programa captura (EVIOCGRAB) as duas
+interfaces e expõe um único "Microsoft X-Box 360 pad" via uinput, com o Home
+como BTN_MODE -- então Steam, SDL e jogos o tratam como um controle Xbox comum.
+
+Comandos:
+  list        mostra as interfaces do dongle e o que cada uma reporta
+  calibrate   pede cada botão/eixo em ordem e grava o mapeamento em JSON
+  run         faz a ponte (precisa do mapeamento gerado pelo calibrate)
+
+Precisa de root (ou acesso a /dev/input/event* do dongle e a /dev/uinput).
+Dependência: python-evdev  (Arch/CachyOS: sudo pacman -S python-evdev)
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import selectors
+import sys
+import time
+
+try:
+    import evdev
+    from evdev import AbsInfo, InputDevice, UInput
+    from evdev import ecodes as e
+except ImportError:  # pragma: no cover
+    sys.exit('python-evdev não encontrado. Instale com: sudo pacman -S python-evdev')
+
+VID, PID = 0x3537, 0x1007
+DEFAULT_MAP = '/etc/gamesir-bridge/mapping.json'
+
+# Ordem da calibração: (alvo, o que pedir ao usuário)
+STEPS = [
+    ('A', 'botão A'),
+    ('B', 'botão B'),
+    ('X', 'botão X'),
+    ('Y', 'botão Y'),
+    ('LB', 'LB (ombro esquerdo)'),
+    ('RB', 'RB (ombro direito)'),
+    ('BACK', 'View / Select (botão pequeno da esquerda)'),
+    ('START', 'Menu / Start (botão pequeno da direita)'),
+    ('LS', 'clique do analógico ESQUERDO (L3)'),
+    ('RS', 'clique do analógico DIREITO (R3)'),
+    ('HOME', 'botão central / Home'),
+    ('DPAD_UP', 'D-pad para CIMA'),
+    ('DPAD_DOWN', 'D-pad para BAIXO'),
+    ('DPAD_LEFT', 'D-pad para a ESQUERDA'),
+    ('DPAD_RIGHT', 'D-pad para a DIREITA'),
+    ('LT', 'gatilho LT (aperte até o fim)'),
+    ('RT', 'gatilho RT (aperte até o fim)'),
+    ('LX', 'analógico ESQUERDO todo para a DIREITA'),
+    ('LY', 'analógico ESQUERDO todo para BAIXO'),
+    ('RX', 'analógico DIREITO todo para a DIREITA'),
+    ('RY', 'analógico DIREITO todo para BAIXO'),
+]
+
+OUT_KEYS = {
+    'A': e.BTN_A, 'B': e.BTN_B, 'X': e.BTN_X, 'Y': e.BTN_Y,
+    'LB': e.BTN_TL, 'RB': e.BTN_TR,
+    'BACK': e.BTN_SELECT, 'START': e.BTN_START, 'HOME': e.BTN_MODE,
+    'LS': e.BTN_THUMBL, 'RS': e.BTN_THUMBR,
+}
+OUT_STICKS = {'LX': e.ABS_X, 'LY': e.ABS_Y, 'RX': e.ABS_RX, 'RY': e.ABS_RY}
+OUT_TRIGGERS = {'LT': e.ABS_Z, 'RT': e.ABS_RZ}
+
+STICK_MAX = 32767
+TRIGGER_MAX = 255
+DETECT_FRACTION = 0.4   # quanto um eixo precisa andar (fração do curso) para contar na calibração
+
+
+# --------------------------------------------------------------------------- dispositivos
+
+def find_sources():
+    """Devolve (gamepad, consumer) do dongle; qualquer um pode ser None."""
+    pad = cons = None
+    for path in evdev.list_devices():
+        try:
+            dev = InputDevice(path)
+        except OSError:
+            continue
+        caps = dev.capabilities()
+        if (dev.info.vendor, dev.info.product) != (VID, PID):
+            dev.close()
+        elif pad is None and e.EV_ABS in caps:
+            pad = dev
+        elif cons is None and e.KEY_HOMEPAGE in caps.get(e.EV_KEY, []):
+            cons = dev
+        else:
+            dev.close()
+    return pad, cons
+
+
+def abs_infos(dev):
+    if dev is None:
+        return {}
+    return dict(dev.capabilities(absinfo=True).get(e.EV_ABS, []))
+
+
+def drain(devs):
+    for d in devs:
+        try:
+            for _ in d.read():
+                pass
+        except BlockingIOError:
+            pass
+
+
+# --------------------------------------------------------------------------- mapeamento
+
+class Mapper:
+    """Converte o estado cru do dongle no estado do controle Xbox virtual."""
+
+    def __init__(self, rules: dict):
+        self.rules = rules
+
+    @staticmethod
+    def _extreme(rule):
+        return rule['max'] if rule['sign'] > 0 else rule['min']
+
+    def pressed(self, target, keys, absvals) -> bool:
+        rule = self.rules.get(target)
+        if not rule:
+            return False
+        if rule['src'] == 'key':
+            return rule['code'] in keys
+        v = absvals.get(rule['code'], rule['rest'])
+        dist = abs(self._extreme(rule) - rule['rest']) or 1
+        return (v - rule['rest']) * rule['sign'] > 0.5 * dist
+
+    def trigger(self, target, keys, absvals) -> int:
+        rule = self.rules.get(target)
+        if not rule:
+            return 0
+        if rule['src'] == 'key':
+            return TRIGGER_MAX if rule['code'] in keys else 0
+        v = absvals.get(rule['code'], rule['rest'])
+        dist = abs(self._extreme(rule) - rule['rest']) or 1
+        frac = (v - rule['rest']) * rule['sign'] / dist
+        return int(round(max(0.0, min(1.0, frac)) * TRIGGER_MAX))
+
+    def stick(self, target, keys, absvals) -> int:
+        rule = self.rules.get(target)
+        if not rule or rule['src'] != 'abs':
+            return 0
+        mid = (rule['min'] + rule['max']) / 2
+        half = (rule['max'] - rule['min']) / 2 or 1
+        v = absvals.get(rule['code'], mid)
+        x = (v - mid) / half * rule['sign']
+        return int(round(max(-1.0, min(1.0, x)) * STICK_MAX))
+
+    def compute(self, keys: set, absvals: dict) -> dict:
+        out = {}
+        for target, code in OUT_KEYS.items():
+            out[(e.EV_KEY, code)] = int(self.pressed(target, keys, absvals))
+        for target, code in OUT_STICKS.items():
+            out[(e.EV_ABS, code)] = self.stick(target, keys, absvals)
+        for target, code in OUT_TRIGGERS.items():
+            out[(e.EV_ABS, code)] = self.trigger(target, keys, absvals)
+        p = lambda t: int(self.pressed(t, keys, absvals))
+        out[(e.EV_ABS, e.ABS_HAT0X)] = p('DPAD_RIGHT') - p('DPAD_LEFT')
+        out[(e.EV_ABS, e.ABS_HAT0Y)] = p('DPAD_DOWN') - p('DPAD_UP')
+        return out
+
+
+def neutral_state() -> dict:
+    return Mapper({}).compute(set(), {})
+
+
+# --------------------------------------------------------------------------- comandos
+
+def cmd_list(_args):
+    found = False
+    for path in evdev.list_devices():
+        try:
+            dev = InputDevice(path)
+        except OSError:
+            continue
+        if (dev.info.vendor, dev.info.product) != (VID, PID):
+            continue
+        found = True
+        print(f'{dev.path}  "{dev.name}"')
+        for etype, codes in dev.capabilities(verbose=True, absinfo=True).items():
+            if etype[0] in ('EV_SYN', 'EV_MSC'):
+                continue
+            names = []
+            for c in codes:
+                if isinstance(c, tuple) and len(c) == 2 and isinstance(c[1], AbsInfo):
+                    n, info = c
+                    names.append(f'{n if isinstance(n, str) else n[0]}[{info.min}..{info.max}]')
+                else:
+                    n = c[0] if isinstance(c, tuple) else c
+                    names.append(n if isinstance(n, str) else n[0])
+            print(f'  {etype[0]}: {", ".join(names)}')
+    if not found:
+        print('Nenhum dispositivo 3537:1007 encontrado. O dongle está plugado? '
+              '(Se o serviço gamesir-bridge estiver rodando, ele não some daqui -- só fica capturado.)')
+        return 1
+    return 0
+
+
+def _wait_hit(devs, sel, rest, infos, timeout):
+    deadline = time.monotonic() + timeout
+    while True:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            return None
+        for key, _ in sel.select(left):
+            try:
+                events = list(key.fileobj.read())
+            except BlockingIOError:
+                continue
+            for ev in events:
+                if ev.type == e.EV_KEY and ev.value == 1:
+                    return {'src': 'key', 'code': ev.code}
+                if ev.type == e.EV_ABS and ev.code in infos:
+                    info = infos[ev.code]
+                    span = (info.max - info.min) or 1
+                    r = rest.get(ev.code, info.value)
+                    if abs(ev.value - r) > DETECT_FRACTION * span:
+                        return {'src': 'abs', 'code': ev.code, 'rest': r,
+                                'sign': 1 if ev.value > r else -1,
+                                'min': info.min, 'max': info.max}
+
+
+def _wait_release(pad, devs, rest, infos):
+    while True:
+        drain(devs)
+        busy = any(d.active_keys() for d in devs)
+        if not busy:
+            for code, info in infos.items():
+                span = (info.max - info.min) or 1
+                if abs(pad.absinfo(code).value - rest.get(code, info.value)) > 0.25 * span:
+                    busy = True
+                    break
+        if not busy:
+            time.sleep(0.25)
+            drain(devs)
+            return
+        time.sleep(0.05)
+
+
+def _describe(rule):
+    if rule['src'] == 'key':
+        return e.KEY.get(rule['code'], e.BTN.get(rule['code'], rule['code']))
+    name = e.ABS.get(rule['code'], rule['code'])
+    return f'{name} {"+" if rule["sign"] > 0 else "-"} (repouso {rule["rest"]})'
+
+
+def cmd_calibrate(args):
+    pad, cons = find_sources()
+    if pad is None:
+        print('Gamepad 3537:1007 não encontrado. Pare o serviço (sudo systemctl stop gamesir-bridge) '
+              'e confira se o dongle está plugado.')
+        return 1
+    devs = [d for d in (pad, cons) if d]
+    infos = abs_infos(pad)
+    for d in devs:
+        d.grab()          # evita que o Home abra o navegador durante a calibração
+    sel = selectors.DefaultSelector()
+    for d in devs:
+        sel.register(d, selectors.EVENT_READ)
+
+    print(f'Calibrando {pad.name} ({pad.path}'
+          f'{", " + cons.path if cons else ""}).')
+    print(f'Para cada item: aperte e segure até aparecer OK. '
+          f'Sem input em {args.timeout:.0f}s o item é pulado.\n')
+    rules = {}
+    try:
+        for target, prompt in STEPS:
+            drain(devs)
+            rest = {code: pad.absinfo(code).value for code in infos}
+            print(f'  -> {prompt} ... ', end='', flush=True)
+            hit = _wait_hit(devs, sel, rest, infos, args.timeout)
+            if hit is None:
+                print('pulado')
+                continue
+            clash = [t for t, r in rules.items()
+                     if r['src'] == hit['src'] and r['code'] == hit['code']
+                     and r.get('sign') == hit.get('sign')]
+            rules[target] = hit
+            note = f'  (ATENÇÃO: igual a {", ".join(clash)})' if clash else ''
+            print(f'OK  {_describe(hit)}{note}')
+            _wait_release(pad, devs, rest, infos)
+    except KeyboardInterrupt:
+        print('\nInterrompido; nada foi gravado.')
+        return 1
+    finally:
+        for d in devs:
+            try:
+                d.ungrab()
+            except OSError:
+                pass
+
+    os.makedirs(os.path.dirname(os.path.abspath(args.map)), exist_ok=True)
+    with open(args.map, 'w') as f:
+        json.dump({'device': f'{VID:04x}:{PID:04x}', 'rules': rules}, f, indent=2)
+    print(f'\nMapeamento gravado em {args.map} ({len(rules)}/{len(STEPS)} itens).')
+    return 0
+
+
+def make_uinput():
+    stick = AbsInfo(value=0, min=-32768, max=32767, fuzz=16, flat=128, resolution=0)
+    trig = AbsInfo(value=0, min=0, max=TRIGGER_MAX, fuzz=0, flat=0, resolution=0)
+    hat = AbsInfo(value=0, min=-1, max=1, fuzz=0, flat=0, resolution=0)
+    caps = {
+        e.EV_KEY: list(OUT_KEYS.values()),
+        e.EV_ABS: [(c, stick) for c in OUT_STICKS.values()]
+                  + [(c, trig) for c in OUT_TRIGGERS.values()]
+                  + [(e.ABS_HAT0X, hat), (e.ABS_HAT0Y, hat)],
+    }
+    # Mesma identidade que o xpad dá a um controle 360 com fio: Steam/SDL já
+    # conhecem o layout, então não precisa de mapeamento manual em lugar nenhum.
+    return UInput(caps, name='Microsoft X-Box 360 pad', vendor=0x045E,
+                  product=0x028E, version=0x0110, bustype=e.BUS_USB)
+
+
+def emit(ui, last: dict, new: dict):
+    changed = False
+    for (etype, code), val in new.items():
+        if last.get((etype, code)) != val:
+            ui.write(etype, code, val)
+            last[(etype, code)] = val
+            changed = True
+    if changed:
+        ui.syn()
+
+
+def cmd_run(args):
+    try:
+        with open(args.map) as f:
+            rules = json.load(f)['rules']
+    except FileNotFoundError:
+        print(f'Mapeamento {args.map} não existe. Rode primeiro: sudo gamesir-bridge calibrate')
+        return 1
+    mapper = Mapper(rules)
+    ui = make_uinput()
+    last: dict = {}
+    emit(ui, last, neutral_state())
+    print(f'Controle virtual criado: {ui.device.path}', flush=True)
+
+    waiting_msg = True
+    while True:
+        pad, cons = find_sources()
+        if pad is None:
+            if waiting_msg:
+                print('Aguardando o dongle 3537:1007...', flush=True)
+                waiting_msg = False
+            for d in (cons,):
+                if d:
+                    d.close()
+            time.sleep(1)
+            continue
+        waiting_msg = True
+        devs = [d for d in (pad, cons) if d]
+        sel = selectors.DefaultSelector()
+        try:
+            for d in devs:
+                d.grab()
+                sel.register(d, selectors.EVENT_READ)
+            keys = set()
+            for d in devs:
+                keys |= set(d.active_keys())
+            absvals = {code: info.value for code, info in abs_infos(pad).items()}
+            print(f'Conectado: {pad.path}{" + " + cons.path if cons else ""}', flush=True)
+            emit(ui, last, mapper.compute(keys, absvals))
+            while True:
+                for key, _ in sel.select():
+                    for ev in key.fileobj.read():
+                        if ev.type == e.EV_KEY:
+                            if ev.value:
+                                keys.add(ev.code)
+                            else:
+                                keys.discard(ev.code)
+                        elif ev.type == e.EV_ABS:
+                            absvals[ev.code] = ev.value
+                        elif ev.type == e.EV_SYN and ev.code == e.SYN_REPORT:
+                            emit(ui, last, mapper.compute(keys, absvals))
+        except OSError as exc:
+            print(f'Dongle desconectado ({exc.strerror or exc}).', flush=True)
+        finally:
+            sel.close()
+            for d in devs:
+                try:
+                    d.close()
+                except OSError:
+                    pass
+            emit(ui, last, neutral_state())   # solta tudo que estava apertado
+        time.sleep(0.5)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog='gamesir-bridge', description=__doc__.split('\n\n')[0])
+    sub = ap.add_subparsers(dest='cmd', required=True)
+    sub.add_parser('list', help='mostra as interfaces do dongle')
+    c = sub.add_parser('calibrate', help='mapeia cada botão/eixo')
+    c.add_argument('--map', default=DEFAULT_MAP)
+    c.add_argument('--timeout', type=float, default=10.0, help='segundos por item antes de pular')
+    r = sub.add_parser('run', help='faz a ponte para um controle Xbox 360 virtual')
+    r.add_argument('--map', default=DEFAULT_MAP)
+    args = ap.parse_args(argv)
+    try:
+        return {'list': cmd_list, 'calibrate': cmd_calibrate, 'run': cmd_run}[args.cmd](args)
+    except PermissionError as exc:
+        print(f'Sem permissão ({exc.filename}). Rode com sudo.')
+        return 1
+    except KeyboardInterrupt:
+        return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

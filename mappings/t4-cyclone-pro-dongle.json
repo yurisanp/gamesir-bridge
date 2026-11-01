@@ -1,0 +1,27 @@
+{
+  "device": "3537:1007",
+  "description": "GameSir T4 Cyclone Pro via dongle 2.4 GHz (modo DInput, firmware do dongle 1.01). LT/RT chegam digitais nesse modo.",
+  "rules": {
+    "A": {"src": "key", "code": 304},
+    "B": {"src": "key", "code": 305},
+    "X": {"src": "key", "code": 307},
+    "Y": {"src": "key", "code": 308},
+    "LB": {"src": "key", "code": 310},
+    "RB": {"src": "key", "code": 311},
+    "BACK": {"src": "key", "code": 314},
+    "START": {"src": "key", "code": 315},
+    "LS": {"src": "key", "code": 317},
+    "RS": {"src": "key", "code": 318},
+    "HOME": {"src": "key", "code": 172},
+    "DPAD_UP": {"src": "abs", "code": 17, "rest": 0, "sign": -1, "min": -1, "max": 1},
+    "DPAD_DOWN": {"src": "abs", "code": 17, "rest": 0, "sign": 1, "min": -1, "max": 1},
+    "DPAD_LEFT": {"src": "abs", "code": 16, "rest": 0, "sign": -1, "min": -1, "max": 1},
+    "DPAD_RIGHT": {"src": "abs", "code": 16, "rest": 0, "sign": 1, "min": -1, "max": 1},
+    "LT": {"src": "key", "code": 312},
+    "RT": {"src": "key", "code": 313},
+    "LX": {"src": "abs", "code": 0, "rest": 128, "sign": 1, "min": 0, "max": 255},
+    "LY": {"src": "abs", "code": 1, "rest": 128, "sign": 1, "min": 0, "max": 255},
+    "RX": {"src": "abs", "code": 2, "rest": 128, "sign": 1, "min": 0, "max": 255},
+    "RY": {"src": "abs", "code": 5, "rest": 128, "sign": 1, "min": 0, "max": 255}
+  }
+}
