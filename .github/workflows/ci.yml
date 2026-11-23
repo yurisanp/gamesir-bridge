@@ -17,42 +17,50 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
 
+# O app usa GTK 4.14 e libadwaita 1.5, que vêm no Ubuntu 24.04. O AppImage é montado
+# nessa mesma versão, que define a glibc mínima (2.39) para a interface.
+
 jobs:
   lint:
     name: Formatação e clippy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked
 
   test:
     name: Testes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: dbus-daemon (teste de ponta a ponta do D-Bus)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dbus
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dbus libgtk-4-dev libadwaita-1-dev
       - run: cargo test --workspace --locked
 
   msrv:
-    name: Rust mínimo (1.89)
-    runs-on: ubuntu-latest
+    name: Rust mínimo (1.89; app 1.92)
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.89
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check --workspace --locked
+      - run: cargo check --workspace --exclude gamesir-bridge-app --locked
+      # O app usa gtk-rs 0.22, que pede Rust 1.92.
+      - uses: dtolnay/rust-toolchain@1.92
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgtk-4-dev libadwaita-1-dev
+      - run: cargo +1.92 check -p gamesir-bridge-app --locked
 
   golden:
     name: Igual ao script Python original
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,13 +77,13 @@ jobs:
 
   scripts:
     name: Scripts (shellcheck + instalação simulada)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - run: shellcheck install.sh uninstall.sh tools/*.sh data/appimage/AppRun
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --release --locked
+      - run: cargo build --release --locked -p gamesir-bridged
       - name: Instala e desinstala com systemctl/udevadm de mentira
         run: |
           mkdir -p /tmp/stubs
@@ -91,15 +99,19 @@ jobs:
 
   appimage:
     name: AppImage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-musl
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
-      - run: cargo build --release --locked --target x86_64-unknown-linux-musl
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools
+          libgtk-4-dev libadwaita-1-dev librsvg2-common adwaita-icon-theme
+      # Serviço e linha de comando estáticos (musl); o app usa a glibc e leva o GTK junto.
+      - run: cargo build --release --locked --target x86_64-unknown-linux-musl -p gamesir-bridged
+      - run: cargo build --release --locked -p gamesir-bridge-app
       - name: appimagetool
         run: |
           curl -fsSL -o /tmp/appimagetool \
@@ -111,6 +123,11 @@ jobs:
           f=$(ls dist/*.AppImage)
           APPIMAGE_EXTRACT_AND_RUN=1 "$f" --version
           APPIMAGE_EXTRACT_AND_RUN=1 "$f" setup --check || test $? -eq 1
+          "$f" --appimage-extract >/dev/null
+          LD_LIBRARY_PATH=squashfs-root/usr/lib squashfs-root/usr/bin/gamesir-bridge-app --version
+          # Só glibc, GPU, fontes e X11 podem vir do sistema.
+          LD_LIBRARY_PATH=squashfs-root/usr/lib ldd squashfs-root/usr/bin/gamesir-bridge-app | tee /tmp/ldd
+          ! grep 'not found' /tmp/ldd
       - uses: actions/upload-artifact@v4
         with:
           name: GameSir_Bridge-AppImage

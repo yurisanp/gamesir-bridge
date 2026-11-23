@@ -1,0 +1,24 @@
+[package]
+name = "gamesir-bridge-app"
+description = "App do GameSir Bridge (GTK4 + libadwaita)"
+version.workspace = true
+edition.workspace = true
+# gtk-rs 0.22 (gtk4 0.11) pede Rust 1.92; o serviço e a CLI seguem com o mínimo do workspace.
+rust-version = "1.92"
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "gamesir-bridge-app"
+path = "src/main.rs"
+
+[dependencies]
+gamesir-core = { workspace = true, features = ["client"] }
+serde.workspace = true
+serde_json.workspace = true
+gtk = { package = "gtk4", version = "0.11", features = ["v4_14"] }
+adw = { package = "libadwaita", version = "0.9", features = ["v1_5"] }
+zbus = { version = "6", default-features = false, features = ["default-rt", "proxy"] }
+futures-util = { version = "0.3", default-features = false }
+async-channel = "2"

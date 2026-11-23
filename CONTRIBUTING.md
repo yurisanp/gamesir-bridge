@@ -14,8 +14,11 @@ O formato está em [docs/profiles.md](docs/profiles.md).
 
 ## Ambiente
 
-- Rust 1.89 ou mais novo (`rustup` recomendado).
+- Rust 1.89 ou mais novo (`rustup` recomendado); o app pede 1.92 por causa do gtk-rs.
 - `dbus-daemon` para o teste de ponta a ponta do D-Bus (pacote `dbus`; sem ele o teste é pulado).
+- GTK 4.14+ e libadwaita 1.5+ com os headers, para o app (`libgtk-4-dev libadwaita-1-dev` no
+  Debian/Ubuntu, `gtk4 libadwaita` no Arch, `gtk4-devel libadwaita-devel` no Fedora). Sem eles,
+  compile só o serviço: `cargo build -p gamesir-bridged`.
 - Para testar no hardware: `/dev/uinput` e acesso aos `/dev/input/event*` (root).
 
 ```bash
@@ -30,7 +33,12 @@ Rodando o serviço sem instalar, no barramento de sessão:
 sudo systemctl stop gamesir-bridge            # se estiver instalado
 sudo -E target/debug/gamesir-bridged --session-bus --profiles profiles --config /tmp/gsb -v
 target/debug/gamesir-bridge --session-bus status
+GAMESIR_BRIDGE_SESSION_BUS=1 cargo run -p gamesir-bridge-app
 ```
+
+Para mexer no app sem controle nem serviço, use os dados simulados:
+`GAMESIR_BRIDGE_DEMO=1 cargo run -p gamesir-bridge-app`. As imagens do README saem desse modo
+(`GAMESIR_BRIDGE_DEMO_PAGE=editor|calibration|preferences|setup` abre direto numa tela).
 
 ## Organização
 
@@ -38,6 +46,7 @@ target/debug/gamesir-bridge --session-bus status
 | --- | --- |
 | `crates/core` | Mapeamento, perfis, calibração e descoberta (sysfs). Sem I/O de dispositivo: tudo testável. |
 | `crates/daemon` | `gamesir-bridged` (workers evdev/uinput, hotplug, D-Bus) e a CLI `gamesir-bridge`. |
+| `crates/app` | O app em GTK4 + libadwaita. Só fala com o serviço pelo D-Bus. |
 | `profiles/` | Perfis oficiais. |
 | `data/` | udev, systemd, D-Bus, polkit, ícone, AppImage. |
 | `tools/` | Scripts de build do AppImage, release e geração dos valores de referência. |

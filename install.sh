@@ -45,9 +45,9 @@ if [[ -z "$BINDIR" ]]; then
     if [[ ! -x "$BINDIR/gamesir-bridged" || -n "${FORCE_BUILD:-}" ]]; then
         if [[ -n "${SUDO_USER:-}" && $EUID -eq 0 ]]; then
             # Compila como o usuário, não como root (o cargo e o ~/.cargo são dele).
-            sudo -u "$SUDO_USER" -H bash -lc "cd '$HERE' && cargo build --release --locked"
+            sudo -u "$SUDO_USER" -H bash -lc "cd '$HERE' && cargo build --release --locked -p gamesir-bridged"
         else
-            (cd "$HERE" && cargo build --release --locked)
+            (cd "$HERE" && cargo build --release --locked -p gamesir-bridged)
         fi
     fi
 fi

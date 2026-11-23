@@ -14,32 +14,36 @@
 aparecerem no Linux como um **controle Xbox 360**, com todos os botões e o **Home abrindo o
 overlay da Steam**. Vários controles ao mesmo tempo, cada um com seu jogador.
 
+<p align="center"><img src="docs/assets/screenshots/controller.png" alt="App do GameSir Bridge mostrando um GameSir T4 Cyclone Pro ativo como Jogador 1" width="760"></p>
+
 - **Funciona em qualquer jogo:** Steam, SDL, Proton e emuladores já conhecem o Xbox 360.
 - **Vários controles:** dois dongles iguais viram Jogador 1 e Jogador 2, sem trocar os Homes.
 - **Outros controles:** calibre qualquer gamepad em 21 passos, ou contribua com um perfil JSON.
+- **Veja o que chega:** o app desenha o controle ao vivo e troca qualquer botão com um clique.
 - **Some quando funciona:** um serviço do sistema faz a ponte, mesmo sem nenhum app aberto.
 - **Instalação em um passo:** um AppImage para qualquer distro, inclusive SteamOS e Bazzite.
 
 ## Instalação
 
-Baixe o `GameSir_Bridge-*.AppImage` da [última release](https://github.com/yurisanp/gamesir-bridge/releases/latest) e rode:
+Baixe o `GameSir_Bridge-*.AppImage` da [última release](https://github.com/yurisanp/gamesir-bridge/releases/latest), dê permissão de execução e abra
+(dois cliques, ou pelo terminal):
 
 ```bash
 chmod +x GameSir_Bridge-*.AppImage
 ./GameSir_Bridge-*.AppImage
 ```
 
-Na primeira vez ele instala o serviço, a regra udev e as políticas do sistema, pedindo sua
-senha **uma vez** (pkexec). Depois, **replugue o dongle**. Para conferir:
+Na primeira vez o app mostra o que falta e, com um clique em **Configurar**, instala o
+serviço, a regra udev e as políticas do sistema, pedindo sua senha **uma vez** (pkexec).
+Depois, **replugue o dongle**. A ponte roda no serviço: não precisa deixar o app aberto.
 
-```bash
-./GameSir_Bridge-*.AppImage status     # ou: gamesir-bridge status
-```
+Para atualizar, abra o AppImage novo; ele percebe a versão diferente e oferece reinstalar.
+Para remover: **Preferências → Avançado → Remover do sistema**, ou
+`./GameSir_Bridge-*.AppImage setup --uninstall`.
 
-<p align="center"><img src="docs/assets/terminal-status.svg" alt="Saída do gamesir-bridge status com dois controles ativos" width="680"></p>
-
-Para atualizar, rode o AppImage novo; ele percebe a versão diferente e reinstala. Para
-remover: `./GameSir_Bridge-*.AppImage setup --uninstall`.
+A interface precisa de glibc 2.39 ou mais nova (Ubuntu 24.04, Fedora 40, Debian 13, Arch e
+derivados). Em sistemas mais antigos o AppImage segue pela linha de comando: instala o
+serviço e mostra o `status`.
 
 <details>
 <summary>Instalar a partir do código-fonte</summary>
@@ -57,7 +61,21 @@ Se você usava a versão em Python, o `install.sh` remove o serviço antigo e ma
 `/etc/gamesir-bridge/mapping.json`, que continua valendo.
 </details>
 
-## Uso
+## O app
+
+| | |
+| --- | --- |
+| <img src="docs/assets/screenshots/editor.png" alt="Editor de mapeamento com o controle ao vivo e medidores dos eixos" width="420"> | <img src="docs/assets/screenshots/calibration.png" alt="Calibração passo a passo pedindo o botão B" width="420"> |
+| **Mapeamento:** o que você aperta acende. Clique no lápis e aperte o botão físico para trocar. Zona morta e inversão do eixo Y ficam aqui. | **Calibração:** 21 passos, um por tela, com o tempo até pular. Serve para controles que ainda não têm perfil. |
+| <img src="docs/assets/screenshots/setup.png" alt="Primeira execução listando serviço, regra udev e serviço rodando" width="420"> | <img src="docs/assets/screenshots/controller-dark.png" alt="Página do controle no tema escuro" width="420"> |
+| **Primeira execução:** confere o sistema e instala tudo com uma senha. | **Tema claro e escuro**, seguindo o sistema ou escolhido nas preferências. |
+
+## Linha de comando
+
+Tudo que o app faz também existe no terminal (`./GameSir_Bridge-*.AppImage <comando>`, ou
+`gamesir-bridge <comando>` depois de instalado):
+
+<p align="center"><img src="docs/assets/terminal-status.svg" alt="Saída do gamesir-bridge status com dois controles ativos" width="680"></p>
 
 | Comando | O que faz |
 | --- | --- |
@@ -110,13 +128,15 @@ serviço pelo D-Bus ([docs/dbus.md](docs/dbus.md)), e o polkit libera a sessão 
 ## Desenvolvimento
 
 ```bash
+sudo apt install libgtk-4-dev libadwaita-1-dev dbus   # ou o equivalente da sua distro
 cargo test --workspace        # testes (o de D-Bus precisa do dbus-daemon instalado)
 cargo clippy --workspace --all-targets
+GAMESIR_BRIDGE_DEMO=1 cargo run -p gamesir-bridge-app   # o app com controles simulados
 ```
 
-O código está em dois crates: [`gamesir-core`](crates/core) (mapeamento, perfis, calibração e
-descoberta de dispositivos, sem I/O) e [`gamesir-bridged`](crates/daemon) (serviço, D-Bus e
-linha de comando). O porte do mapeador é conferido em CI contra o script Python original, caso
+O código está em três crates: [`gamesir-core`](crates/core) (mapeamento, perfis, calibração e
+descoberta de dispositivos, sem I/O), [`gamesir-bridged`](crates/daemon) (serviço, D-Bus e
+linha de comando) e [`gamesir-bridge-app`](crates/app) (GTK4 + libadwaita). O porte do mapeador é conferido em CI contra o script Python original, caso
 a caso. Detalhes em [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Testado em CachyOS (KDE Plasma 6, Wayland), Steam Big Picture, dongle `3537:1007` (bcdDevice 1.01).
