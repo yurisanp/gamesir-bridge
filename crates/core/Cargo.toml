@@ -1,0 +1,23 @@
+[package]
+name = "gamesir-core"
+description = "Mapeamento, perfis e calibração do GameSir Bridge (sem acesso a dispositivos)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+zbus = { version = "6", default-features = false, features = ["tokio", "proxy"], optional = true }
+
+[features]
+default = []
+# Proxy D-Bus para falar com o serviço (usado pela linha de comando e pelo app).
+client = ["dep:zbus"]
+
+[dev-dependencies]
+tempfile = "3"

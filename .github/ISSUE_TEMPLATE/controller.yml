@@ -1,0 +1,42 @@
+name: Controle novo
+description: Pedir (ou oferecer) suporte a outro controle
+labels: [controle]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Controle
+      placeholder: 8BitDo Ultimate 2.4G
+    validations:
+      required: true
+  - type: input
+    id: vidpid
+    attributes:
+      label: VID:PID
+      description: Aparece em `lsusb` ou `gamesir-bridge list --all`
+      placeholder: 2dc8:3106
+    validations:
+      required: true
+  - type: dropdown
+    id: conn
+    attributes:
+      label: Conexão
+      options: [Dongle 2.4 GHz, USB com fio, Bluetooth]
+  - type: textarea
+    id: list
+    attributes:
+      label: Saída de `sudo gamesir-bridge list --all`
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: profile
+    attributes:
+      label: Perfil calibrado (opcional)
+      description: Se você já rodou `gamesir-bridge calibrate`, cole o JSON de `/etc/gamesir-bridge/profiles/`.
+      render: json
+  - type: textarea
+    id: notes
+    attributes:
+      label: O que não funciona
+      description: Botões que não chegam, gatilhos digitais, vibração...

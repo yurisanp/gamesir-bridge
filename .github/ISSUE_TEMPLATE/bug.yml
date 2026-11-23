@@ -1,0 +1,42 @@
+name: Problema
+description: Algo não funciona como deveria
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: E o que você esperava que acontecesse.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Pluguei o dongle
+        2. Abri a Steam
+        3. ...
+  - type: input
+    id: version
+    attributes:
+      label: Versão
+      description: Saída de `gamesir-bridge --version`
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distro e ambiente
+      placeholder: CachyOS, KDE Plasma 6, Wayland
+  - type: textarea
+    id: status
+    attributes:
+      label: Saída de `gamesir-bridge status` e `gamesir-bridge list`
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "`journalctl -u gamesir-bridge -b --no-pager | tail -100`"
+      render: text

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" font-family="Inter, 'Adwaita Sans', Cantarell, system-ui, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f3f4f7"/>
+      <stop offset="1" stop-color="#e7e9fd"/>
+    </linearGradient>
+    <linearGradient id="ic" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b67f0"/>
+      <stop offset="1" stop-color="#3f4ad0"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="300" rx="20" fill="url(#bg)"/>
+  <g transform="translate(56 54) scale(0.42)">
+    <rect x="16" y="16" width="224" height="224" rx="52" fill="url(#ic)"/>
+    <path d="M84 86h88c22 0 36 14 42 38l10 42c4 18-6 32-22 32-10 0-17-5-23-14l-9-14H86l-9 14c-6 9-13 14-23 14-16 0-26-14-22-32l10-42c6-24 20-38 42-38z" fill="#fff"/>
+    <rect x="70" y="118" width="40" height="12" rx="4" fill="#4b57e3"/>
+    <rect x="84" y="104" width="12" height="40" rx="4" fill="#4b57e3"/>
+    <circle cx="170" cy="110" r="7" fill="#4b57e3"/><circle cx="186" cy="125" r="7" fill="#4b57e3"/>
+    <circle cx="154" cy="125" r="7" fill="#4b57e3"/><circle cx="170" cy="140" r="7" fill="#4b57e3"/>
+  </g>
+  <text x="180" y="98" font-size="42" font-weight="800" fill="#1a1c22" letter-spacing="-1">GameSir Bridge</text>
+  <text x="182" y="132" font-size="19" fill="#656b7a">Seu controle no Linux como um Xbox 360, com Home e tudo.</text>
+
+  <g font-family="'JetBrains Mono', 'Adwaita Mono', 'DejaVu Sans Mono', monospace" font-size="14">
+    <rect x="56" y="186" width="230" height="38" rx="9" fill="#fff" stroke="#dcdfe6"/>
+    <text x="72" y="210" fill="#1a1c22">3537:1007 · gamepad</text>
+    <rect x="56" y="236" width="230" height="38" rx="9" fill="#fff" stroke="#dcdfe6"/>
+    <text x="72" y="260" fill="#1a1c22">3537:1007 · Home</text>
+    <path d="M286 205 C 330 205, 330 230, 370 230 M286 255 C 330 255, 330 230, 370 230" fill="none" stroke="#9aa0b4" stroke-width="2"/>
+    <rect x="370" y="208" width="220" height="44" rx="10" fill="#4b57e3"/>
+    <text x="392" y="236" fill="#fff" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="600">gamesir-bridged</text>
+    <path d="M590 230 H 650" stroke="#9aa0b4" stroke-width="2"/>
+    <path d="M644 224 L 652 230 L 644 236" fill="none" stroke="#9aa0b4" stroke-width="2"/>
+    <rect x="656" y="208" width="248" height="44" rx="10" fill="#fff" stroke="#1d9a60" stroke-width="1.5"/>
+    <circle cx="676" cy="230" r="5" fill="#1d9a60"/>
+    <text x="690" y="235" fill="#1a1c22">Xbox 360 pad · 045e:028e</text>
+  </g>
+</svg>

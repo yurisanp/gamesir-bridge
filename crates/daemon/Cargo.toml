@@ -1,0 +1,38 @@
+[package]
+name = "gamesir-bridged"
+description = "Serviço do GameSir Bridge: junta as interfaces do controle num Xbox 360 virtual (uinput)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "gamesir-bridged"
+path = "src/main.rs"
+
+[[bin]]
+name = "gamesir-bridge"
+path = "src/cli/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+gamesir-core = { workspace = true, features = ["client"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+evdev = "0.13"
+libc = "0.2"
+log = "0.4"
+env_logger = { version = "0.11", default-features = false, features = ["auto-color", "humantime"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal", "time"] }
+futures-util = { version = "0.3", default-features = false }
+zbus = { version = "6", default-features = false, features = ["tokio", "proxy", "service"] }
+
+[dev-dependencies]
+tempfile = "3"

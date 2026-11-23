@@ -1,0 +1,16 @@
+#!/bin/sh
+# Ponto de entrada do AppImage.
+#   ./GameSir_Bridge.AppImage            instala o serviço se preciso e mostra o estado
+#   ./GameSir_Bridge.AppImage <comando>  qualquer comando do gamesir-bridge (setup, status, calibrate...)
+HERE="$(dirname "$(readlink -f "$0")")"
+export APPDIR="${APPDIR:-$HERE}"
+BIN="$APPDIR/usr/bin"
+
+if [ $# -gt 0 ]; then
+    exec "$BIN/gamesir-bridge" "$@"
+fi
+if [ -x "$BIN/gamesir-bridge-app" ]; then
+    exec "$BIN/gamesir-bridge-app"
+fi
+"$BIN/gamesir-bridge" setup --if-needed || exit $?
+exec "$BIN/gamesir-bridge" status

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Dúvidas e ideias
+    url: https://github.com/yurisanp/gamesir-bridge/discussions
+    about: Perguntas sobre uso e ideias ainda soltas
+  - name: Vulnerabilidade de segurança
+    url: https://github.com/yurisanp/gamesir-bridge/security/advisories/new
+    about: Relate em privado (veja SECURITY.md)

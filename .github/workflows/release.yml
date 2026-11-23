@@ -1,0 +1,72 @@
+name: Release
+
+# Publica uma release quando uma tag vX.Y.Z é enviada (ver CONTRIBUTING.md, "Lançando uma versão").
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: A tag bate com a versão do Cargo.toml
+        id: version
+        run: |
+          v=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != versão $v"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools dbus
+      - run: cargo test --workspace --locked
+      - run: cargo build --release --locked --target x86_64-unknown-linux-musl
+      - name: AppImage
+        run: |
+          curl -fsSL -o /tmp/appimagetool \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+          APPIMAGETOOL=/tmp/appimagetool tools/build-appimage.sh
+      - name: Tarball (binários + install.sh)
+        run: |
+          v=${{ steps.version.outputs.version }}
+          d=gamesir-bridge-$v-x86_64-linux
+          mkdir -p "dist/$d/bin"
+          cp target/x86_64-unknown-linux-musl/release/gamesir-bridge{,d} "dist/$d/bin/"
+          cp -r install.sh uninstall.sh data profiles LICENSE README.md CHANGELOG.md "dist/$d/"
+          rm -rf "dist/$d/data/appimage"
+          tar -C dist -czf "dist/$d.tar.gz" "$d"
+          rm -rf "dist/$d"
+      - name: Notas da versão (seção do CHANGELOG.md)
+        run: |
+          v=${{ steps.version.outputs.version }}
+          awk -v v="$v" '$0 ~ "^## \\[" v "\\]" {on=1; next} on && /^## \[/ {exit} on' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "CHANGELOG.md não tem a seção [$v]"; exit 1; }
+          cat >> notes.md <<'EOT'
+
+          ### Como instalar
+          Baixe o `.AppImage`, dê permissão de execução e rode. Na primeira vez ele instala o
+          serviço e a regra udev (pede sua senha uma vez):
+
+          ```bash
+          chmod +x GameSir_Bridge-*.AppImage
+          ./GameSir_Bridge-*.AppImage
+          ```
+          EOT
+      - name: Checksums
+        run: cd dist && sha256sum ./* > SHA256SUMS
+      - name: Publica
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=""
+          case "$GITHUB_REF_NAME" in *-*) pre="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --title "GameSir Bridge ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md $pre

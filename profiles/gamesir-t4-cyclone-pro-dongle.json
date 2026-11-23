@@ -1,6 +1,12 @@
 {
+  "id": "gamesir-t4-cyclone-pro-dongle",
+  "name": "GameSir T4 Cyclone Pro",
   "device": "3537:1007",
   "description": "GameSir T4 Cyclone Pro via dongle 2.4 GHz (modo DInput, firmware do dongle 1.01). LT/RT chegam digitais nesse modo.",
+  "notes": [
+    "Neste modo do dongle, LT/RT chegam como botões e não há vibração.",
+    "M, L4 e R4 são programados no próprio controle."
+  ],
   "rules": {
     "A": {"src": "key", "code": 304},
     "B": {"src": "key", "code": 305},
