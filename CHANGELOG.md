@@ -6,6 +6,21 @@ Todas as mudanças relevantes ficam aqui. O formato segue o
 
 ## [Unreleased]
 
+### Adicionado
+- App gráfico em GTK4 + libadwaita (`gamesir-bridge-app`), que abre ao rodar o AppImage:
+  - lista de controles conectados e conhecidos, com estado e jogador;
+  - página do controle com o desenho ao vivo e o liga/desliga da ponte;
+  - editor de mapeamento com "clique no lápis e aperte o botão", medidores dos eixos, zona
+    morta, inversão do eixo Y, exportar e restaurar o perfil oficial;
+  - calibração passo a passo, com voltar, pular e o tempo de cada passo;
+  - primeira execução que instala o serviço com uma senha, e preferências (tema, reinstalar
+    e remover do sistema).
+- `GAMESIR_BRIDGE_DEMO=1` abre o app com controles simulados, sem serviço.
+
+### Mudado
+- O AppImage leva o GTK junto e abre o app; sem glibc 2.39+, segue pela linha de comando.
+- `install.sh` compila só o serviço e a linha de comando (não precisa do GTK).
+
 ## [0.2.0] - 2026-11-23
 
 Reescrita em Rust: o script virou um serviço do sistema com interface D-Bus.

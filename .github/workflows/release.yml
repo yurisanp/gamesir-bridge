@@ -13,7 +13,7 @@ env:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: A tag bate com a versão do Cargo.toml
@@ -25,9 +25,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-musl
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools dbus
+      - run: >-
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends musl-tools dbus
+          libgtk-4-dev libadwaita-1-dev librsvg2-common adwaita-icon-theme
       - run: cargo test --workspace --locked
-      - run: cargo build --release --locked --target x86_64-unknown-linux-musl
+      # Serviço e linha de comando estáticos (musl); o app usa a glibc e leva o GTK junto.
+      - run: cargo build --release --locked --target x86_64-unknown-linux-musl -p gamesir-bridged
+      - run: cargo build --release --locked -p gamesir-bridge-app
       - name: AppImage
         run: |
           curl -fsSL -o /tmp/appimagetool \
@@ -52,8 +56,10 @@ jobs:
           cat >> notes.md <<'EOT'
 
           ### Como instalar
-          Baixe o `.AppImage`, dê permissão de execução e rode. Na primeira vez ele instala o
-          serviço e a regra udev (pede sua senha uma vez):
+          Baixe o `.AppImage`, dê permissão de execução e abra. Na primeira vez o app instala
+          o serviço e a regra udev (pede sua senha uma vez). A interface precisa de glibc 2.39
+          ou mais nova (Ubuntu 24.04, Fedora 40, Debian 13, Arch); em sistemas mais antigos o
+          AppImage segue pela linha de comando:
 
           ```bash
           chmod +x GameSir_Bridge-*.AppImage
