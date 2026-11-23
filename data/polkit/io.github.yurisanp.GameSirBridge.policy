@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>GameSir Bridge</vendor>
+  <vendor_url>https://github.com/yurisanp/gamesir-bridge</vendor_url>
+  <action id="io.github.yurisanp.GameSirBridge.configure">
+    <description>Configure game controllers in GameSir Bridge</description>
+    <description xml:lang="pt_BR">Configurar os controles do GameSir Bridge</description>
+    <message>Authentication is required to change controller settings</message>
+    <message xml:lang="pt_BR">É preciso autenticar para mudar a configuração dos controles</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+  </action>
+</policyconfig>

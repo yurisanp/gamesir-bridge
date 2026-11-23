@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.yurisanp.GameSirBridge</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>GameSir Bridge</name>
+  <summary>Game controllers on Linux as a virtual Xbox 360 pad</summary>
+  <summary xml:lang="pt-BR">Controles no Linux como um Xbox 360 virtual</summary>
+  <description>
+    <p>Merges the interfaces of controllers such as the GameSir T4 Cyclone Pro dongle into a
+      single virtual Xbox 360 controller, so Steam, SDL and games recognize every button,
+      including Home as the Guide button.</p>
+  </description>
+  <launchable type="desktop-id">io.github.yurisanp.GameSirBridge.desktop</launchable>
+  <url type="homepage">https://github.com/yurisanp/gamesir-bridge</url>
+  <url type="bugtracker">https://github.com/yurisanp/gamesir-bridge/issues</url>
+  <developer id="io.github.yurisanp">
+    <name>Yuri Pereira</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.2.0" date="2026-11-23"/>
+  </releases>
+</component>

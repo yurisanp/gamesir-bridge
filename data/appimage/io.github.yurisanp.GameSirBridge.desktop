@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=GameSir Bridge
+GenericName=Controles como Xbox 360
+Comment=Faz o GameSir T4 (e outros controles) aparecer como um controle Xbox 360
+Exec=gamesir-bridge
+Icon=io.github.yurisanp.GameSirBridge
+Terminal=true
+Categories=Game;Utility;
+Keywords=gamepad;controller;xbox;gamesir;controle;

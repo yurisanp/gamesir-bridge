@@ -1,0 +1,37 @@
+[Unit]
+Description=GameSir Bridge: controles como Xbox 360 virtual
+Documentation=https://github.com/yurisanp/gamesir-bridge
+After=systemd-udevd.service dbus.service
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/modprobe uinput
+ExecStart=/usr/bin/gamesir-bridged
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2
+
+# O serviço só precisa ler /dev/input, escrever em /dev/uinput e na própria configuração.
+ConfigurationDirectory=gamesir-bridge
+ProtectSystem=strict
+ReadWritePaths=/etc/gamesir-bridge /etc/udev/rules.d
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+DevicePolicy=closed
+DeviceAllow=/dev/uinput rw
+DeviceAllow=char-input rw
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+NoNewPrivileges=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
