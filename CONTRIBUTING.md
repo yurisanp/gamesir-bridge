@@ -14,7 +14,7 @@ O formato está em [docs/profiles.md](docs/profiles.md).
 
 ## Ambiente
 
-- Rust 1.89 ou mais novo (`rustup` recomendado).
+- Rust 1.89 ou mais novo (`rustup` recomendado); o app pede 1.92 por causa do gtk-rs.
 - `dbus-daemon` para o teste de ponta a ponta do D-Bus (pacote `dbus`; sem ele o teste é pulado).
 - GTK 4.14+ e libadwaita 1.5+ com os headers, para o app (`libgtk-4-dev libadwaita-1-dev` no
   Debian/Ubuntu, `gtk4 libadwaita` no Arch, `gtk4-devel libadwaita-devel` no Fedora). Sem eles,

@@ -3,7 +3,8 @@ name = "gamesir-bridge-app"
 description = "App do GameSir Bridge (GTK4 + libadwaita)"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+# gtk-rs 0.22 (gtk4 0.11) pede Rust 1.92; o serviço e a CLI seguem com o mínimo do workspace.
+rust-version = "1.92"
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
