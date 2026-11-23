@@ -6,6 +6,11 @@ Todas as mudanças relevantes ficam aqui. O formato segue o
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-23
+
+Reescrita em Rust: o script virou um serviço do sistema com interface D-Bus, com um app em
+GTK4 + libadwaita.
+
 ### Adicionado
 - App gráfico em GTK4 + libadwaita (`gamesir-bridge-app`), que abre ao rodar o AppImage:
   - lista de controles conectados e conhecidos, com estado e jogador;
@@ -16,16 +21,6 @@ Todas as mudanças relevantes ficam aqui. O formato segue o
   - primeira execução que instala o serviço com uma senha, e preferências (tema, reinstalar
     e remover do sistema).
 - `GAMESIR_BRIDGE_DEMO=1` abre o app com controles simulados, sem serviço.
-
-### Mudado
-- O AppImage leva o GTK junto e abre o app; sem glibc 2.39+, segue pela linha de comando.
-- `install.sh` compila só o serviço e a linha de comando (não precisa do GTK).
-
-## [0.2.0] - 2026-11-23
-
-Reescrita em Rust: o script virou um serviço do sistema com interface D-Bus.
-
-### Adicionado
 - Vários controles ao mesmo tempo, cada um com seu Xbox 360 virtual e posição de jogador.
 - Perfis de controle como dados (`profiles/*.json`), com controles novos calibrados do zero
   virando perfis do usuário em `/etc/gamesir-bridge/profiles`.
@@ -35,8 +30,9 @@ Reescrita em Rust: o script virou um serviço do sistema com interface D-Bus.
 - Zona morta e inversão do eixo Y dos analógicos (`options` no mapeamento).
 - Linha de comando `gamesir-bridge`: `status`, `list`, `calibrate`, `enable`, `disable`,
   `mapping`, `reload` e `setup`.
-- AppImage com binários estáticos que instala o serviço com uma senha (`setup`), inclusive em
-  distros com `/usr` somente leitura.
+- AppImage que abre o app e instala o serviço com uma senha (`setup`), inclusive em distros
+  com `/usr` somente leitura. A interface precisa de glibc 2.39+; sem ela, segue pela linha
+  de comando.
 - CI (formatação, clippy, testes, Rust mínimo, conferência contra o script Python, shellcheck,
   AppImage por PR) e releases automáticas nas tags.
 
@@ -52,7 +48,8 @@ Reescrita em Rust: o script virou um serviço do sistema com interface D-Bus.
   `mapping.json` são os mesmos da versão em Python; o `/etc/gamesir-bridge/mapping.json`
   existente continua valendo.
 - `install.sh` instala em `/usr/local` (ou `/var/lib/gamesir-bridge`) e põe a integração em
-  `/etc`; `uninstall.sh` remove exatamente o que foi instalado.
+  `/etc`; `uninstall.sh` remove exatamente o que foi instalado. Ele compila só o serviço e a
+  linha de comando (não precisa do GTK).
 
 ## [0.1.0] - 2026-11-01
 
